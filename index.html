@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edzéstervező Naptár</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Edzéstervező Naptár</h1>
+            <div class="controls">
+                <button id="prevMonth">Előző Hónap</button>
+                <h2 id="currentMonthYear"></h2>
+                <button id="nextMonth">Következő Hónap</button>
+                <select id="viewSelector">
+                    <option value="monthly">Havi Nézet</option>
+                    <option value="weekly">Heti Nézet</option>
+                </select>
+            </div>
+        </header>
+
+        <main>
+            <aside class="sidebar">
+                <h2>Ciklusok</h2>
+                <ul id="cycleList">
+                    <!-- Ciklusok listája dinamikusan jelenik meg itt -->
+                </ul>
+                <button id="addCycleBtn">Új Ciklus Hozzáadása</button>
+
+                <div id="cycleModal" class="modal">
+                    <div class="modal-content">
+                        <span class="close-btn">&times;</span>
+                        <h3>Új Ciklus</h3>
+                        <label for="cycleName">Ciklus Neve:</label>
+                        <input type="text" id="cycleName" placeholder="Pl. Stabilizáció">
+                        <label for="cycleStartDate">Kezdés Dátuma:</label>
+                        <input type="date" id="cycleStartDate">
+                        <label for="cycleEndDate">Befejezés Dátuma:</label>
+                        <input type="date" id="cycleEndDate">
+                        <label for="cycleColor">Ciklus Színe:</label>
+                        <input type="color" id="cycleColor" value="#e0e0e0">
+                        <button id="saveCycleBtn">Mentés</button>
+                    </div>
+                </div>
+
+                <h2>Szűrés</h2>
+                <label for="filterEventType">Edzéstípus:</label>
+                <select id="filterEventType">
+                    <option value="">Összes</option>
+                    <option value="Kültéri futás">Kültéri futás</option>
+                    <option value="Konditermi edzés">Konditermi edzés</option>
+                    <option value="Labdás edzés">Labdás edzés</option>
+                    <option value="Edzőmérkőzés">Edzőmérkőzés</option>
+                    <option value="Tétmérkőzés">Tétmérkőzés</option>
+                </select>
+                <label for="filterAbility">Fejlesztendő Képesség:</label>
+                <select id="filterAbility">
+                    <option value="">Összes</option>
+                    <option value="Stabilizációs állóképesség">Stabilizációs állóképesség</option>
+                    <option value="Erő-állóképesség">Erő-állóképesség</option>
+                    <option value="Izomtömeg növelés">Izomtömeg növelés</option>
+                    <option value="Maximális erő">Maximális erő</option>
+                    <option value="Robbanékonyság / Teljesítményfejlesztés">Robbanékonyság / Teljesítményfejlesztés</option>
+                    <option value="Aerob állóképesség">Aerob állóképesség</option>
+                    <option value="Anaerob állóképesség">Anaerob állóképesség</option>
+                    <option value="Gyorsasági állóképesség">Gyorsasági állóképesség</option>
+                </select>
+                <button id="applyFilterBtn">Szűrés</button>
+            </aside>
+
+            <section class="calendar-view">
+                <div id="calendarGrid" class="calendar-grid">
+                    <!-- Naptár cellák dinamikusan jelennek meg itt -->
+                </div>
+            </section>
+        </main>
+
+        <div id="eventModal" class="modal">
+            <div class="modal-content">
+                <span class="close-event-btn">&times;</span>
+                <h3 id="eventModalTitle">Esemény Részletei</h3>
+                <input type="hidden" id="eventDate">
+                <label for="eventType">Edzéstípus:</label>
+                <select id="eventType">
+                    <option value="Kültéri futás">Kültéri futás</option>
+                    <option value="Konditermi edzés">Konditermi edzés</option>
+                    <option value="Labdás edzés">Labdás edzés</option>
+                    <option value="Edzőmérkőzés">Edzőmérkőzés</option>
+                    <option value="Tétmérkőzés">Tétmérkőzés</option>
+                </select>
+                <label for="eventAbility">Fejlesztendő Képesség:</label>
+                <select id="eventAbility">
+                    <option value="Stabilizációs állóképesség">Stabilizációs állóképesség</option>
+                    <option value="Erő-állóképesség">Erő-állóképesség</option>
+                    <option value="Izomtömeg növelés">Izomtömeg növelés</option>
+                    <option value="Maximális erő">Maximális erő</option>
+                    <option value="Robbanékonyság / Teljesítményfejlesztés">Robbanékonyság / Teljesítményfejlesztés</option>
+                    <option value="Aerob állóképesség">Aerob állóképesség</option>
+                    <option value="Anaerob állóképesség">Anaerob állóképesség</option>
+                    <option value="Gyorsasági állóképesség">Gyorsasági állóképesség</option>
+                    <option value="">Nincs megadva</option>
+                </select>
+                <label for="eventLoad">Terhelés (Intenzitás, Ismétlésszám):</label>
+                <input type="text" id="eventLoad" placeholder="Pl. Magas, 10-12 ism.">
+                <label for="eventDetails">Gyakorlatok/Tartalom:</label>
+                <textarea id="eventDetails" placeholder="Írd le a gyakorlatokat vagy az edzés tartalmát"></textarea>
+                <button id="saveEventBtn">Esemény Mentése</button>
+                <button id="deleteEventBtn" style="background-color: red; display: none;">Esemény Törlése</button>
+            </div>
+        </div>
+
+        <div id="dailyDetailView" class="modal">
+            <div class="modal-content">
+                <span class="close-daily-view-btn">&times;</span>
+                <h3 id="dailyViewDate"></h3>
+                <div id="dailyEventsList">
+                    <!-- Napi események részletei itt -->
+                </div>
+            </div>
+        </div>
+
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>

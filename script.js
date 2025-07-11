@@ -11,9 +11,16 @@ document.addEventListener('DOMContentLoaded', function() {
     const cycleModal = document.getElementById('cycleModal');
     const closeCycleModalBtn = cycleModal.querySelector('.close-btn');
     const saveCycleBtn = document.getElementById('saveCycleBtn');
-    const cycleListElement = document.getElementById('cycleList');
+    // const cycleListElement = document.getElementById('cycleList'); // Régi oldalsáv lista, már nem használjuk közvetlenül így
     let cycles = []; // { name, startDate, endDate, color, id }
     let editingCycleId = null;
+
+    // Ciklusok Kezelése Modal
+    const manageCyclesBtn = document.getElementById('manageCyclesBtn');
+    const manageCyclesModal = document.getElementById('manageCyclesModal');
+    const closeManageCyclesBtn = manageCyclesModal.querySelector('.close-manage-cycles-btn');
+    const modalCycleListElement = document.getElementById('modalCycleList');
+
 
     // Események (Edzések/Mérkőzések)
     const eventModal = document.getElementById('eventModal');
@@ -43,7 +50,7 @@ document.addEventListener('DOMContentLoaded', function() {
         loadData(); // Adatok betöltése (localStorage vagy alapértelmezett)
         populateFilterOptions(); // Szűrő opciók feltöltése
         renderCalendar();
-        renderCycleList();
+        // renderCycleList(); // Már nem hívjuk itt, a "Ciklusok Kezelése" modális nyitásakor fog frissülni
         addEventListeners();
     }
 
@@ -79,6 +86,28 @@ document.addEventListener('DOMContentLoaded', function() {
         //         filterAbilityElement.add(option);
         //     }
         // });
+    }
+
+    function createWeekCycleElement(dateStr) {
+        const cycle = getCycleForDate(dateStr);
+        if (cycle) {
+            const weekCycleElement = document.createElement('div');
+            weekCycleElement.classList.add('week-cycle-info');
+            weekCycleElement.textContent = cycle.name.length > 20 ? cycle.name.substring(0,17) + '...' : cycle.name; // Rövidítés, ha túl hosszú
+            weekCycleElement.title = `${cycle.name} (${cycle.startDate} - ${cycle.endDate})`; // Teljes név tooltipként
+            // A háttérszínt és a border-t a CSS fogja kezelni a .week-cycle-info és a ciklus-specifikus class alapján.
+            // De hozzáadhatunk egy általánosabb stílust, vagy a ciklus színét itt is:
+            weekCycleElement.style.backgroundColor = hexToRgba(cycle.color, 0.25); // Enyhe háttér a ciklus színével
+            weekCycleElement.style.borderLeft = `3px solid ${cycle.color}`;
+
+
+            weekCycleElement.addEventListener('click', (e) => {
+                e.stopPropagation();
+                openCycleModal(cycle.id); // Lehetővé teszi a ciklus szerkesztését a sávra kattintva
+            });
+            return weekCycleElement;
+        }
+        return null;
     }
 
 
@@ -131,9 +160,22 @@ document.addEventListener('DOMContentLoaded', function() {
             const dayNumber = document.createElement('span');
             dayNumber.classList.add('day-number');
             dayNumber.textContent = day;
-            dayCell.appendChild(dayNumber);
 
-            // Ciklus vizuális jelölése
+            // Ciklus nevének megjelenítése a hét első napján (Hétfő)
+            const currentDayObject = new Date(year, month, day);
+            if (currentDayObject.getDay() === 1 || (firstDayOfWeek === 0 && day ===1 )) { // Hétfő (1) vagy ha a hónap első napja hétfő
+                // Vagy egyszerűbben: ha i % 7 === 0 a rácsban (de az üres cellákat is figyelembe kell venni)
+                // Inkább a dátum alapján:
+                const weekCycleElement = createWeekCycleElement(dateStr);
+                if (weekCycleElement) {
+                    // A dayCell elejére szúrjuk be, a dayNumber elé
+                    dayCell.appendChild(weekCycleElement); // Vagy dayCell.insertBefore(weekCycleElement, dayNumber);
+                }
+            }
+            dayCell.appendChild(dayNumber); // A dayNumber a ciklus sáv után jöjjön
+
+
+            // Ciklus vizuális jelölése (háttér/border a nap celláján)
             applyCycleStyling(dayCell, dateStr);
 
             // Események megjelenítése a napon
@@ -203,7 +245,16 @@ document.addEventListener('DOMContentLoaded', function() {
             dayNameElement.textContent = `${daysOfWeekFull[i]} (${dayInWeek.getDate()})`;
             dayCell.appendChild(dayNameElement);
 
-            // Ciklus vizuális jelölése
+            // Ciklus nevének megjelenítése a heti nézet minden napján (vagy csak a hét elején)
+            // Most minden napra tesszük, de lehet, hogy csak a hét első napjára kellene,
+            // vagy egy közös sáv a hét fölé (ami bonyolultabb DOM struktúrát igényelne).
+            const weekCycleElement = createWeekCycleElement(dateStr);
+            if (weekCycleElement) {
+                // A dayNameElement után, de az események konténere elé
+                dayCell.insertBefore(weekCycleElement, dayCell.querySelector('.day-events-container'));
+            }
+
+            // Ciklus vizuális jelölése (háttér/border a nap celláján)
             applyCycleStyling(dayCell, dateStr);
 
             // Események
@@ -251,28 +302,32 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function createEventElement(event) {
         const eventElement = document.createElement('div');
-        eventElement.classList.add('event');
-        // Rövidített szöveg + tooltip a teljes szöveghez
-        const shortText = event.type.length > 15 ? event.type.substring(0, 12) + '...' : event.type;
-        eventElement.textContent = shortText; // A látható szöveg az edzés típusa (rövidítve)
-        // A title attribútumból kivesszük az edzés típusát, mivel az már a textContent-ben megjelenik.
-        eventElement.title = `Képesség: ${event.ability || '-'}\nTerhelés: ${event.load || '-'}\nRészletek: ${event.details || '-'}`;
-        if (!event.ability && !event.load && !event.details) { // Ha nincs más info, a tooltip üres lenne, ilyenkor legalább a típust visszatehetjük
-            eventElement.title = event.type;
-        }
+        eventElement.classList.add('event'); // Alap class
 
-
+        // CSS class hozzáadása a típus alapján a színezéshez
         const typeClass = `event-${event.type.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]/g, '')}`;
         eventElement.classList.add(typeClass);
-        // A CSS-ben definiált classok alapján színezzük, de fallbackként maradhat a JS style is
-        // eventElement.style.backgroundColor = getEventColor(event.type);
-
 
         if (event.type === 'Tétmérkőzés' || event.type === 'Edzőmérkőzés') {
-            eventElement.classList.add('highlight-match-event'); // Külön class az eseménynek, nem a napnak
+            eventElement.classList.add('highlight-match-event');
         }
+
         eventElement.draggable = true;
         eventElement.dataset.eventId = event.id;
+
+        // Tooltip összeállítása (edzés típusa nélkül, ha van más adat)
+        let tooltipText = `Képesség: ${event.ability || '-'}\nTerhelés: ${event.load || '-'}\nRészletek: ${event.details || '-'}`;
+        if (!event.ability && !event.load && !event.details) {
+            tooltipText = event.type; // Ha nincs más info, a tooltip legyen a típus
+        }
+        eventElement.title = tooltipText;
+
+        // Látható szöveg beállítása (rövidített edzéstípus)
+        const shortText = event.type.length > 15 ? event.type.substring(0, 12) + '...' : event.type;
+        // Defenzív beállítás: először töröljük a tartalmat, majd text node-ként adjuk hozzá.
+        eventElement.textContent = '';
+        eventElement.appendChild(document.createTextNode(shortText));
+
         eventElement.addEventListener('click', (e) => {
             e.stopPropagation();
             openEventModal(event.date, event.id);
@@ -280,7 +335,7 @@ document.addEventListener('DOMContentLoaded', function() {
         return eventElement;
     }
 
-    function getEventColor(type) { // Ezt a funkciót meghagyhatjuk fallbacknek, vagy ha a CSS classok nem elegendőek
+    function getEventColor(type) { // Ezt a funkciót meghagyhatjuk fallbacknek, vagy ha a CSS classok nem elegendőek. Jelenleg nem aktívan használt.
         const colors = {
             'Kültéri futás': '#2ecc71',
             'Konditermi edzés': '#3498db',
@@ -299,21 +354,24 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // --- CIKLUSOK KEZELÉSE ---
-    function renderCycleList() {
-        cycleListElement.innerHTML = '';
+    function renderCycleList() { // Most a modalCycleListElement-be renderel
+        modalCycleListElement.innerHTML = '';
+        if (cycles.length === 0) {
+            modalCycleListElement.innerHTML = '<p>Nincsenek még ciklusok felvéve.</p>';
+            return;
+        }
         cycles.forEach(cycle => {
             const li = document.createElement('li');
             li.dataset.cycleId = cycle.id;
 
             const cycleText = document.createElement('span');
-            cycleText.textContent = `${cycle.name} (${cycle.startDate} - ${cycle.endDate})`;
+            // Rövidítjük a nevet, ha túl hosszú a listában is
+            const displayName = cycle.name.length > 25 ? cycle.name.substring(0, 22) + '...' : cycle.name;
+            cycleText.textContent = `${displayName} (${cycle.startDate} - ${cycle.endDate})`;
+            cycleText.title = `${cycle.name} (${cycle.startDate} - ${cycle.endDate})`; // Teljes név tooltipben
             cycleText.style.borderLeft = `5px solid ${cycle.color}`;
-            cycleText.style.paddingLeft = '5px';
-            cycleText.style.flexGrow = '1';
-            cycleText.addEventListener('click', () => {
-                // Később ide jöhet pl. a ciklus eseményeinek kiemelése a naptárban
-                console.log("Ciklus kiválasztva (info):", cycle);
-            });
+            // cycleText.style.paddingLeft = '5px'; // Ezt a CSS-ből kapja a li paddingja miatt
+            // cycleText.style.flexGrow = '1'; // Ezt a CSS-ből kapja a li span-ja
 
             const editBtn = document.createElement('button');
             editBtn.innerHTML = "&#9998;"; // ceruza ikon
@@ -321,7 +379,8 @@ document.addEventListener('DOMContentLoaded', function() {
             editBtn.title = "Ciklus szerkesztése";
             editBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                openCycleModal(cycle.id);
+                closeManageCyclesModal(); // Bezárjuk a lista modalt
+                openCycleModal(cycle.id);   // Megnyitjuk a szerkesztő modalt
             });
 
             const deleteBtn = document.createElement('button');
@@ -331,12 +390,16 @@ document.addEventListener('DOMContentLoaded', function() {
             deleteBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 deleteCycle(cycle.id);
+                // A deleteCycle már frissíti a listát a renderCycleList hívásával, ha a modális nyitva van
+                // De ha nincs nyitva, akkor is lefut, ami felesleges.
+                // Jobb lenne, ha a deleteCycle csak az adatokat módosítaná, és a renderCycleList-et csak itt hívnánk meg.
+                // De a jelenlegi struktúra miatt a deleteCycle() végén lévő renderCycleList() frissíti a modális tartalmát, ha az nyitva van.
             });
 
             li.appendChild(cycleText);
             li.appendChild(editBtn);
             li.appendChild(deleteBtn);
-            cycleListElement.appendChild(li);
+            modalCycleListElement.appendChild(li);
         });
     }
 
@@ -394,8 +457,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
         cycles.sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
         saveData();
-        renderCycleList();
-        renderCalendar();
+        renderCalendar(); // Naptár mindig frissül
+        // Cikluslista a modálisban csak akkor frissül, ha az nyitva van
+        if (manageCyclesModal.style.display === 'block') {
+            renderCycleList();
+        }
         closeCycleModal();
     }
 
@@ -411,8 +477,11 @@ document.addEventListener('DOMContentLoaded', function() {
         //     }
         // });
         saveData();
-        renderCycleList();
         renderCalendar(); // Frissítjük a naptárat, hogy a ciklus színei eltűnjenek
+        // Ha a "Ciklusok Kezelése" modális nyitva van, frissítsük a listát benne
+        if (manageCyclesModal.style.display === 'block') {
+            renderCycleList();
+        }
     }
 
     function getCycleForDate(dateStr) {
@@ -720,7 +789,23 @@ document.addEventListener('DOMContentLoaded', function() {
             if (event.target == dailyDetailViewModal) {
                 closeDailyDetailView();
             }
+            if (event.target == manageCyclesModal) { // Új: Cikluskezelő modál bezárása
+                closeManageCyclesModal();
+            }
         }
+
+        // Ciklusok Kezelése Modal eseményfigyelői
+        manageCyclesBtn.addEventListener('click', openManageCyclesModal);
+        closeManageCyclesBtn.addEventListener('click', closeManageCyclesModal);
+    }
+
+    function openManageCyclesModal() {
+        manageCyclesModal.style.display = 'block';
+        renderCycleList(); // Frissítjük a listát minden megnyitáskor
+    }
+
+    function closeManageCyclesModal() {
+        manageCyclesModal.style.display = 'none';
     }
 
     // Alkalmazás indítása

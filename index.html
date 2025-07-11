@@ -23,16 +23,14 @@
 
         <main>
             <aside class="sidebar">
-                <h2>Ciklusok</h2>
-                <ul id="cycleList">
-                    <!-- Ciklusok listája dinamikusan jelenik meg itt -->
-                </ul>
+                <h2>Vezérlők</h2>
                 <button id="addCycleBtn">Új Ciklus Hozzáadása</button>
+                <button id="manageCyclesBtn" style="margin-top: 10px; background-color: #6c757d;">Ciklusok Kezelése</button>
 
-                <div id="cycleModal" class="modal">
+                <div id="cycleModal" class="modal"> <!-- Ciklus Hozzáadása/Szerkesztése Modal -->
                     <div class="modal-content">
                         <span class="close-btn">&times;</span>
-                        <h3>Új Ciklus</h3>
+                        <h3 id="cycleModalTitle">Új Ciklus</h3> <!-- Dinamikusan változik -->
                         <label for="cycleName">Ciklus Neve:</label>
                         <input type="text" id="cycleName" placeholder="Pl. Stabilizáció">
                         <label for="cycleStartDate">Kezdés Dátuma:</label>
@@ -45,7 +43,19 @@
                     </div>
                 </div>
 
-                <h2>Szűrés</h2>
+                <div id="manageCyclesModal" class="modal"> <!-- Ciklusok Kezelése Modal -->
+                    <div class="modal-content">
+                        <span class="close-manage-cycles-btn">&times;</span>
+                        <h3>Ciklusok Kezelése</h3>
+                        <ul id="modalCycleList">
+                            <!-- Ciklusok listája szerkesztés/törlés gombokkal itt jelenik meg -->
+                        </ul>
+                        <p style="font-size: 0.8em; margin-top: 15px;">A ciklusok szerkesztéséhez vagy törléséhez használd a listában lévő gombokat. A naptárban a heti ciklus sávra kattintva is szerkeszthetsz.</p>
+                    </div>
+                </div>
+
+
+                <h2 style="margin-top: 20px;">Szűrés</h2>
                 <label for="filterEventType">Edzéstípus:</label>
                 <select id="filterEventType">
                     <option value="">Összes</option>

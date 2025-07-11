@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const saveCycleBtn = document.getElementById('saveCycleBtn');
     const cycleListElement = document.getElementById('cycleList');
     let cycles = []; // { name, startDate, endDate, color, id }
+    let editingCycleId = null;
 
     // Események (Edzések/Mérkőzések)
     const eventModal = document.getElementById('eventModal');
@@ -253,8 +254,13 @@ document.addEventListener('DOMContentLoaded', function() {
         eventElement.classList.add('event');
         // Rövidített szöveg + tooltip a teljes szöveghez
         const shortText = event.type.length > 15 ? event.type.substring(0, 12) + '...' : event.type;
-        eventElement.textContent = shortText;
-        eventElement.title = `${event.type}\nKépesség: ${event.ability || '-'}\nTerhelés: ${event.load || '-'}\nRészletek: ${event.details || '-'}`;
+        eventElement.textContent = shortText; // A látható szöveg az edzés típusa (rövidítve)
+        // A title attribútumból kivesszük az edzés típusát, mivel az már a textContent-ben megjelenik.
+        eventElement.title = `Képesség: ${event.ability || '-'}\nTerhelés: ${event.load || '-'}\nRészletek: ${event.details || '-'}`;
+        if (!event.ability && !event.load && !event.details) { // Ha nincs más info, a tooltip üres lenne, ilyenkor legalább a típust visszatehetjük
+            eventElement.title = event.type;
+        }
+
 
         const typeClass = `event-${event.type.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]/g, '')}`;
         eventElement.classList.add(typeClass);
@@ -297,26 +303,69 @@ document.addEventListener('DOMContentLoaded', function() {
         cycleListElement.innerHTML = '';
         cycles.forEach(cycle => {
             const li = document.createElement('li');
-            li.textContent = `${cycle.name} (${cycle.startDate} - ${cycle.endDate})`;
-            li.style.borderLeft = `5px solid ${cycle.color}`;
-            li.addEventListener('click', () => {
-                // TODO: Ciklus szerkesztése vagy kiemelése a naptárban
-                console.log("Ciklus kiválasztva:", cycle);
+            li.dataset.cycleId = cycle.id;
+
+            const cycleText = document.createElement('span');
+            cycleText.textContent = `${cycle.name} (${cycle.startDate} - ${cycle.endDate})`;
+            cycleText.style.borderLeft = `5px solid ${cycle.color}`;
+            cycleText.style.paddingLeft = '5px';
+            cycleText.style.flexGrow = '1';
+            cycleText.addEventListener('click', () => {
+                // Később ide jöhet pl. a ciklus eseményeinek kiemelése a naptárban
+                console.log("Ciklus kiválasztva (info):", cycle);
             });
+
+            const editBtn = document.createElement('button');
+            editBtn.innerHTML = "&#9998;"; // ceruza ikon
+            editBtn.classList.add('cycle-action-btn');
+            editBtn.title = "Ciklus szerkesztése";
+            editBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                openCycleModal(cycle.id);
+            });
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.innerHTML = "&#128465;"; // kuka ikon
+            deleteBtn.classList.add('cycle-action-btn', 'delete');
+            deleteBtn.title = "Ciklus törlése";
+            deleteBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                deleteCycle(cycle.id);
+            });
+
+            li.appendChild(cycleText);
+            li.appendChild(editBtn);
+            li.appendChild(deleteBtn);
             cycleListElement.appendChild(li);
         });
     }
 
-    function openCycleModal() {
+    function openCycleModal(cycleId = null) {
         cycleModal.style.display = 'block';
-        document.getElementById('cycleName').value = '';
-        document.getElementById('cycleStartDate').value = '';
-        document.getElementById('cycleEndDate').value = '';
-        document.getElementById('cycleColor').value = '#e0e0e0';
+        editingCycleId = cycleId;
+        const modalTitle = cycleModal.querySelector('h3');
+
+        if (cycleId) {
+            const cycle = cycles.find(c => c.id === cycleId);
+            if (cycle) {
+                modalTitle.textContent = 'Ciklus Szerkesztése';
+                document.getElementById('cycleName').value = cycle.name;
+                document.getElementById('cycleStartDate').value = cycle.startDate;
+                document.getElementById('cycleEndDate').value = cycle.endDate;
+                document.getElementById('cycleColor').value = cycle.color;
+            }
+        } else {
+            modalTitle.textContent = 'Új Ciklus';
+            document.getElementById('cycleName').value = '';
+            document.getElementById('cycleStartDate').value = '';
+            document.getElementById('cycleEndDate').value = '';
+            document.getElementById('cycleColor').value = '#e0e0e0';
+        }
     }
 
     function closeCycleModal() {
         cycleModal.style.display = 'none';
+        editingCycleId = null;
     }
 
     function saveCycle() {
@@ -334,12 +383,36 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        cycles.push({ id: Date.now().toString(), name, startDate, endDate, color });
-        cycles.sort((a, b) => new Date(a.startDate) - new Date(b.startDate)); // Rendezés kezdő dátum szerint
+        if (editingCycleId) {
+            const cycleIndex = cycles.findIndex(c => c.id === editingCycleId);
+            if (cycleIndex > -1) {
+                cycles[cycleIndex] = { ...cycles[cycleIndex], name, startDate, endDate, color };
+            }
+        } else {
+            cycles.push({ id: Date.now().toString(), name, startDate, endDate, color });
+        }
+
+        cycles.sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
         saveData();
         renderCycleList();
-        renderCalendar(); // Frissítjük a naptárat, hogy a ciklus színei megjelenjenek
+        renderCalendar();
         closeCycleModal();
+    }
+
+    function deleteCycle(cycleId) {
+        if (!confirm('Biztosan törölni szeretnéd ezt a ciklust? A hozzárendelt eseményekről a ciklus jelölés elvész.')) {
+            return;
+        }
+        cycles = cycles.filter(c => c.id !== cycleId);
+        // Opcionálisan: frissítsd az eseményeket, hogy ne hivatkozzanak a törölt ciklusra
+        // events.forEach(event => {
+        //     if (event.cycleId === cycleId) {
+        //         event.cycleId = null; // Vagy valamilyen alapértelmezett érték
+        //     }
+        // });
+        saveData();
+        renderCycleList();
+        renderCalendar(); // Frissítjük a naptárat, hogy a ciklus színei eltűnjenek
     }
 
     function getCycleForDate(dateStr) {
@@ -502,59 +575,99 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // --- DRAG AND DROP ---
-    let draggedEventId = null;
+// Nincs már szükség globális draggedEventId-re, a dataTransfer objektumot használjuk
 
     function addDragAndDropListeners() {
+    // Fontos, hogy ezeket a listenereket a renderCalendar után mindig újra hozzáadjuk a friss elemekhez.
         const eventElements = document.querySelectorAll('.event');
         eventElements.forEach(el => {
+        // Régi listener eltávolítása, ha már volt (biztonsági okokból, elkerülendő a duplikált listenereket)
+        // Bár a teljes calendarGrid újraírásakor ez nem feltétlenül szükséges, de jó gyakorlat lehet komplexebb DOM manipulációknál.
+        // el.removeEventListener('dragstart', handleDragStart); // Ha nem írjuk újra a teljes eventElementet
             el.addEventListener('dragstart', handleDragStart);
         });
 
         const dayCells = document.querySelectorAll('.calendar-day, .weekly-day');
         dayCells.forEach(cell => {
+        // cell.removeEventListener('dragover', handleDragOver);
+        // cell.removeEventListener('dragleave', handleDragLeave);
+        // cell.removeEventListener('drop', handleDrop);
+        // cell.removeEventListener('dragenter', handleDragEnter); // Ha használnánk
+
             cell.addEventListener('dragover', handleDragOver);
             cell.addEventListener('dragleave', handleDragLeave);
             cell.addEventListener('drop', handleDrop);
+        // cell.addEventListener('dragenter', handleDragEnter); // Új listener, ha szükséges
         });
     }
 
     function handleDragStart(e) {
-        draggedEventId = e.target.dataset.eventId;
+    if (!e.target.classList.contains('event')) return; // Csak .event elemek legyenek húzhatók
+
+    e.dataTransfer.setData('text/plain', e.target.dataset.eventId);
         e.dataTransfer.effectAllowed = 'move';
-        e.target.classList.add('dragging'); // Vizuális visszajelzés
+    e.target.classList.add('dragging');
+    // console.log('Drag started for event:', e.target.dataset.eventId); // DEBUG
     }
 
+// function handleDragEnter(e) { // DEBUG
+//     e.preventDefault(); // Szükséges lehet bizonyos böngészőkben
+//     const targetCell = e.target.closest('.calendar-day, .weekly-day');
+//     if (targetCell) {
+//         targetCell.classList.add('drop-target');
+//         // console.log('Drag enter on:', targetCell.dataset.date);
+//     }
+// }
+
     function handleDragOver(e) {
-        e.preventDefault(); // Szükséges a drop eseményhez
-        e.dataTransfer.dropEffect = 'move';
-        if (e.target.closest('.calendar-day') || e.target.closest('.weekly-day')) {
-             e.target.closest('.calendar-day, .weekly-day').classList.add('drop-target');
+    e.preventDefault(); // Szükséges a drop esemény engedélyezéséhez
+    e.dataTransfer.dropEffect = 'move'; // Vizuális visszajelzés a kurzornak
+    const targetCell = e.target.closest('.calendar-day, .weekly-day');
+    if (targetCell) {
+        targetCell.classList.add('drop-target'); // Vizuális jelzés a célterületen
         }
     }
+
     function handleDragLeave(e) {
-        if (e.target.closest('.calendar-day') || e.target.closest('.weekly-day')) {
-            e.target.closest('.calendar-day, .weekly-day').classList.remove('drop-target');
+    const cell = e.target.closest('.calendar-day, .weekly-day');
+    // Csak akkor távolítsuk el a 'drop-target' classt, ha az egér ténylegesen elhagyja a cellát,
+    // és nem csak egy belső elemét (pl. egy másik eventet a cellán belül).
+    // e.relatedTarget az az elem, amelyre az egérkurzor átlépett.
+    if (cell && (!e.relatedTarget || !cell.contains(e.relatedTarget))) {
+        cell.classList.remove('drop-target');
+        // console.log('Drag leave from:', cell.dataset.date); // DEBUG
         }
     }
 
     function handleDrop(e) {
         e.preventDefault();
         const targetCell = e.target.closest('.calendar-day, .weekly-day');
-        if (!targetCell || !draggedEventId) return;
+    const droppedEventId = e.dataTransfer.getData('text/plain');
 
-        targetCell.classList.remove('drop-target');
-        document.querySelector(`[data-event-id="${draggedEventId}"]`)?.classList.remove('dragging');
+    // Takarítás: távolítsuk el a 'dragging' és 'drop-target' osztályokat minden releváns elemről
+    document.querySelectorAll('.dragging').forEach(el => el.classList.remove('dragging'));
+    document.querySelectorAll('.drop-target').forEach(el => el.classList.remove('drop-target'));
 
+    if (!targetCell || !droppedEventId) {
+        console.warn("Drop a nem megfelelő célra vagy nincs droppedEventId. TargetCell:", targetCell, "DroppedEventId:", droppedEventId);
+        return;
+    }
 
         const newDate = targetCell.dataset.date;
-        const eventIndex = events.findIndex(ev => ev.id === draggedEventId);
+    const eventToMove = events.find(ev => ev.id === droppedEventId);
 
-        if (eventIndex > -1 && newDate) {
-            events[eventIndex].date = newDate;
+    if (eventToMove && newDate) {
+        if (eventToMove.date === newDate) {
+            // console.log("Esemény ugyanarra a napra lett húzva, nincs változás."); // DEBUG
+            return; // Nincs szükség újrarenderelésre, ha nem változott a dátum
+        }
+        // console.log(`Esemény mozgatása: ${droppedEventId} -> ${newDate}`); // DEBUG
+        eventToMove.date = newDate;
             saveData();
             renderCalendar(); // Újrarenderelés az esemény új helyén
+    } else {
+        console.error("Hiba az esemény áthelyezésekor: esemény vagy új dátum nem található.", "Event:", eventToMove, "NewDate:", newDate, "DroppedEventId:", droppedEventId);
         }
-        draggedEventId = null;
     }
 
     // --- SZŰRÉS ---

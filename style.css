@@ -87,14 +87,57 @@ main {
     background-color: #e9ecef;
     border-radius: 3px;
     font-size: 0.9em;
-    cursor: pointer;
+    /* cursor: pointer; -> Ezt levesszük, mert a gomboknak lesz saját kurzoruk */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0; /* Levesszük a paddingot, mert a belső span és gombok kezelik */
 }
+
+.sidebar ul li span {
+    padding: 8px; /* Visszatesszük a szöveges részre */
+    cursor: pointer; /* A szövegre kattintva lehet infót megjeleníteni */
+}
+
 
 .sidebar ul li:hover {
     background-color: #dde2e6;
 }
 
-.sidebar button {
+.sidebar button, .cycle-action-btn { /* Közös stílus az oldalsáv gombjainak */
+    width: 100%;
+    padding: 10px;
+    background-color: #5cb85c;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-bottom: 15px;
+}
+.sidebar button:hover, .cycle-action-btn:hover {
+    background-color: #4cae4c;
+}
+
+.cycle-action-btn {
+    width: auto; /* Cikluslista gombjai ne legyenek teljes szélességűek */
+    padding: 5px 8px;
+    margin-left: 5px;
+    margin-bottom: 0; /* Nincs alsó margó a lista gomboknál */
+    font-size: 0.8em;
+    background-color: #6c757d; /* Semlegesebb szín */
+}
+.cycle-action-btn:hover {
+    background-color: #5a6268;
+}
+.cycle-action-btn.delete {
+    background-color: #dc3545;
+}
+.cycle-action-btn.delete:hover {
+    background-color: #c82333;
+}
+
+
+.sidebar label {
     width: 100%;
     padding: 10px;
     background-color: #5cb85c;
@@ -181,14 +224,20 @@ main {
     text-overflow: ellipsis;
     white-space: nowrap;
     cursor: grab;
+    color: #333; /* Alapértelmezett fekete/sötétszürke szövegszín az eseményekhez */
+}
+.event:hover {
+    opacity: 0.85; /* Enyhe áttetszőség hover esetén */
 }
 
+
 /* Edzéstípusok színkódjai class alapján */
-.event-kuelteri-futas { background-color: #2ecc71; /* Zöld */ }
-.event-konditermi-edzes { background-color: #3498db; /* Kék */ }
-.event-labdas-edzes { background-color: #f1c40f; color: #333; /* Sárga */ }
-.event-edzomerkozes { background-color: #e67e22; /* Narancs */ }
-.event-tetmerkozes { background-color: #e74c3c; /* Piros */ }
+/* A .event alapból fekete szöveget kap, itt csak a sárga hátterűnél kell figyelni, hogy a fekete jól olvasható-e */
+.event-kuelteri-futas { background-color: #2ecc71; }
+.event-konditermi-edzes { background-color: #3498db; }
+.event-labdas-edzes { background-color: #f1c40f; /* Alapértelmezett fekete szöveg jó itt */ }
+.event-edzomerkozes { background-color: #e67e22; }
+.event-tetmerkozes { background-color: #e74c3c; }
 
 .event.highlight-match-event { /* Kiemelés magának az eseménynek, ha mérkőzés */
     border: 1px solid gold;

@@ -88,25 +88,24 @@ document.addEventListener('DOMContentLoaded', function() {
         // });
     }
 
-    function createWeekCycleElement(dateStr) {
+    function createWeekCycleStripElement(dateStr) {
         const cycle = getCycleForDate(dateStr);
+        // Csak akkor hozzuk létre a sávot, ha van ciklus az adott napon
         if (cycle) {
-            const weekCycleElement = document.createElement('div');
-            weekCycleElement.classList.add('week-cycle-info');
-            weekCycleElement.textContent = cycle.name.length > 20 ? cycle.name.substring(0,17) + '...' : cycle.name; // Rövidítés, ha túl hosszú
-            weekCycleElement.title = `${cycle.name} (${cycle.startDate} - ${cycle.endDate})`; // Teljes név tooltipként
-            // A háttérszínt és a border-t a CSS fogja kezelni a .week-cycle-info és a ciklus-specifikus class alapján.
-            // De hozzáadhatunk egy általánosabb stílust, vagy a ciklus színét itt is:
-            weekCycleElement.style.backgroundColor = hexToRgba(cycle.color, 0.25); // Enyhe háttér a ciklus színével
-            weekCycleElement.style.borderLeft = `3px solid ${cycle.color}`;
+            const weekCycleStrip = document.createElement('div');
+            weekCycleStrip.classList.add('week-cycle-strip');
+            weekCycleStrip.textContent = cycle.name;
+            weekCycleStrip.title = `${cycle.name} (${cycle.startDate} - ${cycle.endDate})`;
+            weekCycleStrip.style.backgroundColor = hexToRgba(cycle.color, 0.3);
+            weekCycleStrip.style.borderLeft = `5px solid ${cycle.color}`;
 
-
-            weekCycleElement.addEventListener('click', (e) => {
+            weekCycleStrip.addEventListener('click', (e) => {
                 e.stopPropagation();
-                openCycleModal(cycle.id); // Lehetővé teszi a ciklus szerkesztését a sávra kattintva
+                openCycleModal(cycle.id);
             });
-            return weekCycleElement;
+            return weekCycleStrip;
         }
+        // Ha nincs ciklus, ne adjunk vissza semmit, hogy ne jelenjen meg üres sáv
         return null;
     }
 
@@ -125,7 +124,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function renderMonthlyView() {
-        calendarGridElement.className = 'calendar-grid'; // Visszaállítás havi nézetre
+        calendarGridElement.className = 'calendar-grid';
         const year = currentDate.getFullYear();
         const month = currentDate.getMonth();
 
@@ -139,84 +138,67 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         const firstDayOfMonth = new Date(year, month, 1);
-        const lastDayOfMonth = new Date(year, month + 1, 0);
-        const firstDayOfWeek = (firstDayOfMonth.getDay() + 6) % 7; // 0 (Hétfő) - 6 (Vasárnap)
-        const totalDays = lastDayOfMonth.getDate();
+        const firstDayOfWeek = (firstDayOfMonth.getDay() + 6) % 7; // 0=Hétfő
 
-        // Üres cellák a hónap elején
-        for (let i = 0; i < firstDayOfWeek; i++) {
-            const emptyCell = document.createElement('div');
-            emptyCell.classList.add('calendar-day', 'other-month');
-            calendarGridElement.appendChild(emptyCell);
-        }
+        // Visszalépünk a naptárnézet első napjára (ami a hónap első hetének hétfője)
+        let currentDay = new Date(firstDayOfMonth);
+        currentDay.setDate(currentDay.getDate() - firstDayOfWeek);
 
-        // Hónap napjai
-        for (let day = 1; day <= totalDays; day++) {
-            const dayCell = document.createElement('div');
-            dayCell.classList.add('calendar-day');
-            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-            dayCell.dataset.date = dateStr;
+        const totalWeeksToRender = 6; // Mindig 6 hetet renderelünk a konzisztens nézetért
 
-            const dayNumber = document.createElement('span');
-            dayNumber.classList.add('day-number');
-            dayNumber.textContent = day;
-
-            // Ciklus nevének megjelenítése a hét első napján (Hétfő)
-            const currentDayObject = new Date(year, month, day);
-            if (currentDayObject.getDay() === 1 || (firstDayOfWeek === 0 && day ===1 )) { // Hétfő (1) vagy ha a hónap első napja hétfő
-                // Vagy egyszerűbben: ha i % 7 === 0 a rácsban (de az üres cellákat is figyelembe kell venni)
-                // Inkább a dátum alapján:
-                const weekCycleElement = createWeekCycleElement(dateStr);
-                if (weekCycleElement) {
-                    // A dayCell elejére szúrjuk be, a dayNumber elé
-                    dayCell.appendChild(weekCycleElement); // Vagy dayCell.insertBefore(weekCycleElement, dayNumber);
-                }
+        for (let i = 0; i < totalWeeksToRender; i++) {
+            // Heti ciklus sáv létrehozása és hozzáadása a hét elején
+            const dateStrForWeek = `${currentDay.getFullYear()}-${String(currentDay.getMonth() + 1).padStart(2, '0')}-${String(currentDay.getDate()).padStart(2, '0')}`;
+            const weekCycleStrip = createWeekCycleStripElement(dateStrForWeek);
+            if (weekCycleStrip) {
+                calendarGridElement.appendChild(weekCycleStrip);
+            } else {
+                // Ha nincs ciklus, egy üres sávot teszünk be, hogy a grid struktúra ne csússzon el.
+                const emptyStrip = document.createElement('div');
+                emptyStrip.classList.add('week-cycle-strip', 'empty');
+                calendarGridElement.appendChild(emptyStrip);
             }
-            dayCell.appendChild(dayNumber); // A dayNumber a ciklus sáv után jöjjön
 
+            // A hét 7 napjának renderelése
+            for (let j = 0; j < 7; j++) {
+                const dayCell = document.createElement('div');
+                dayCell.classList.add('calendar-day');
+                const dateStr = `${currentDay.getFullYear()}-${String(currentDay.getMonth() + 1).padStart(2, '0')}-${String(currentDay.getDate()).padStart(2, '0')}`;
+                dayCell.dataset.date = dateStr;
 
-            // Ciklus vizuális jelölése (háttér/border a nap celláján)
-            applyCycleStyling(dayCell, dateStr);
-
-            // Események megjelenítése a napon
-            const dayEvents = getEventsForDate(dateStr);
-            dayEvents.forEach(event => {
-                const eventElement = createEventElement(event);
-                dayCell.appendChild(eventElement);
-            });
-
-            // Nap kiemelése, ha van mérkőzés vagy edzés
-            if (hasMatchTypeOnDate(dateStr)) dayCell.classList.add('highlight-match-day');
-            // if (hasTrainingTypeOnDate(dateStr)) dayCell.classList.add('highlight-training-day');
-
-
-            dayCell.addEventListener('click', () => openEventModal(dateStr));
-            dayCell.addEventListener('dblclick', (e) => {
-                // Csak akkor nyissa meg a napi nézetet, ha nem egy eseményre kattintottunk duplán
-                if (e.target.closest('.event')) return;
-                if (e.target === dayCell || e.target.classList.contains('day-number') || e.target.classList.contains('day-events-container')) {
-                    openDailyDetailView(dateStr);
+                if (currentDay.getMonth() !== month) {
+                    dayCell.classList.add('other-month');
                 }
-            });
 
-            // Konténer az eseményeknek a napon belül, hogy jobban kezelhető legyen a túlcsordulás
-            const eventsContainer = document.createElement('div');
-            eventsContainer.classList.add('day-events-container');
-            dayEvents.forEach(event => { // Újrahasznosítjuk a dayEvents változót
-                const eventElement = createEventElement(event);
-                eventsContainer.appendChild(eventElement);
-            });
-            dayCell.appendChild(eventsContainer);
+                const dayNumber = document.createElement('span');
+                dayNumber.classList.add('day-number');
+                dayNumber.textContent = currentDay.getDate();
+                dayCell.appendChild(dayNumber);
 
-            calendarGridElement.appendChild(dayCell);
-        }
+                applyCycleStyling(dayCell, dateStr);
 
-        // Üres cellák a hónap végén, hogy a rács teljes legyen
-        const remainingCells = (7 - ( (firstDayOfWeek + totalDays) % 7 )) % 7;
-        for (let i = 0; i < remainingCells; i++) {
-            const emptyCell = document.createElement('div');
-            emptyCell.classList.add('calendar-day', 'other-month');
-            calendarGridElement.appendChild(emptyCell);
+                const dayEvents = getEventsForDate(dateStr);
+                const eventsContainer = document.createElement('div');
+                eventsContainer.classList.add('day-events-container');
+                dayEvents.forEach(event => {
+                    const eventElement = createEventElement(event);
+                    eventsContainer.appendChild(eventElement);
+                });
+                dayCell.appendChild(eventsContainer);
+
+                if (hasMatchTypeOnDate(dateStr)) dayCell.classList.add('highlight-match-day');
+
+                dayCell.addEventListener('click', () => openEventModal(dateStr));
+                dayCell.addEventListener('dblclick', (e) => {
+                    if (e.target.closest('.event') || e.target.closest('.week-cycle-strip')) return;
+                    if (e.target === dayCell || e.target.classList.contains('day-number') || e.target.classList.contains('day-events-container')) {
+                        openDailyDetailView(dateStr);
+                    }
+                });
+
+                calendarGridElement.appendChild(dayCell);
+                currentDay.setDate(currentDay.getDate() + 1);
+            }
         }
     }
 
@@ -245,14 +227,13 @@ document.addEventListener('DOMContentLoaded', function() {
             dayNameElement.textContent = `${daysOfWeekFull[i]} (${dayInWeek.getDate()})`;
             dayCell.appendChild(dayNameElement);
 
-            // Ciklus nevének megjelenítése a heti nézet minden napján (vagy csak a hét elején)
-            // Most minden napra tesszük, de lehet, hogy csak a hét első napjára kellene,
-            // vagy egy közös sáv a hét fölé (ami bonyolultabb DOM struktúrát igényelne).
-            const weekCycleElement = createWeekCycleElement(dateStr);
-            if (weekCycleElement) {
-                // A dayNameElement után, de az események konténere elé
-                dayCell.insertBefore(weekCycleElement, dayCell.querySelector('.day-events-container'));
-            }
+            // Ciklus nevének megjelenítése a heti nézetben - Ezt a logikát most eltávolítjuk,
+            // mivel a kérés a havi nézetre fókuszált, és a heti nézetben a naponkénti
+            // ismétlődés zavaró lehet. A ciklus háttérszíne itt elegendő információt ad.
+            // const weekCycleElement = createWeekCycleElement(dateStr);
+            // if (weekCycleElement) {
+            //     dayCell.insertBefore(weekCycleElement, dayCell.querySelector('.day-events-container'));
+            // }
 
             // Ciklus vizuális jelölése (háttér/border a nap celláján)
             applyCycleStyling(dayCell, dateStr);

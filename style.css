@@ -401,23 +401,33 @@ main {
     opacity: 0.7;
 }
 
-.week-cycle-info {
-    font-size: 0.75em; /* Kicsit nagyobb, mint a korábbi 0.7em */
-    padding: 2px 5px;
-    border-radius: 4px;
-    margin-bottom: 4px; /* Térköz a nap száma és az események között */
-    text-align: center;
+.week-cycle-strip {
+    grid-column: 1 / -1; /* Átfogja az összes (7) oszlopot */
+    padding: 3px 10px;
+    margin-bottom: 1px; /* Kis térköz a hét napjai felett */
+    background-color: #f0f0f0; /* Alap háttér, ha nincs ciklus */
+    text-align: left;
+    font-size: 0.8em;
+    font-weight: bold;
+    color: #555;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    cursor: pointer; /* Jelzi, hogy kattintható */
-    color: #333; /* Sötét szövegszín a jobb olvashatóságért */
-    border: 1px solid transparent; /* Alap border, amit a JS felülírhat */
-    line-height: 1.4;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
 }
-.week-cycle-info:hover {
-    opacity: 0.8;
-    box-shadow: 0 0 3px rgba(0,0,0,0.2);
+.week-cycle-strip:not(.empty):hover {
+    opacity: 0.9;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+}
+.week-cycle-strip.empty {
+    background-color: transparent;
+    cursor: default;
+    /* Adjunk neki egy minimális magasságot, hogy a grid ne ugorjon, de ne is látszódjon */
+    height: 5px;
+    padding: 0;
+    margin-bottom: 0;
 }
 
 
